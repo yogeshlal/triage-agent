@@ -1,0 +1,38 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Environment / secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Runtime / logs
+*.log
+
+# Triage-agent runtime output (RCA reports and per-run workspaces)
+reports/
+runs/
+
+# Claude / editor / OS
+.claude/
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+triage-agent-memory.md
+
+# Internal-only docs (design intent + Claude context)
+CLAUDE.md
+plan.md
