@@ -25,6 +25,7 @@ from typing import Any, Callable, Optional
 
 import litellm
 
+from .kernelci import NodeContext
 from .prompts import build_system_prompt, build_user_message
 from .tools import TOOL_SCHEMAS, AgentContext, dispatch
 
@@ -99,6 +100,8 @@ def run_agent(
     skill_dir: Path,
     run_workspace: Path,
     config: AgentConfig,
+    node_context: Optional[NodeContext] = None,
+    node_json_path: Optional[Path] = None,
     on_iteration: Optional[Callable[[int, dict[str, Any]], None]] = None,
 ) -> AgentResult:
     ctx = AgentContext(
@@ -115,6 +118,8 @@ def run_agent(
         log_truncated=log_truncated,
         report_path=report_path,
         job_id=job_id,
+        node_context=node_context,
+        node_json_path=node_json_path,
     )
     user_msg = build_user_message(
         job_id=job_id, log_path=log_path, report_path=report_path,

@@ -5,3 +5,9 @@ pydantic-settings>=2.2
 python-dotenv>=1.0
 litellm>=1.40
 requests>=2.31
+# KernelCI access. kci-dev is the sanctioned client library; we use its
+# KernelCIClient for node lookups rather than talking to the API directly.
+# It pins click<8.3, which pip flags as conflicting with litellm's
+# huggingface-hub (wants >=8.4.2). Verified harmless: huggingface-hub only
+# needs click for its own CLI, and litellm imports fine on click 8.2.x.
+kci-dev>=0.1.11

@@ -16,6 +16,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .kernelci import NodeContext
+
 
 def _lava_job_url(job_id: str) -> str | None:
     """Compose the full LAVA job page URL from LAVA_URL and job_id.
@@ -52,6 +54,8 @@ def build_system_prompt(
     log_truncated: bool,
     report_path: Path,
     job_id: str,
+    node_context: NodeContext | None = None,
+    node_json_path: Path | None = None,
 ) -> str:
     skill_md_path = skill_dir / "SKILL.md"
     skill_md = skill_md_path.read_text(encoding="utf-8") if skill_md_path.exists() else \
@@ -70,6 +74,32 @@ def build_system_prompt(
         if lava_url
         else "- LAVA job URL       : (LAVA_URL not set)"
     )
+
+    # Only a handful of scalars go inline; the full node JSON sits in the run
+    # workspace and is read on demand, keeping the fixed prompt prefix stable
+    # for caching.
+    kernelci_parts: list[str] = []
+    if node_context is not None:
+        kernelci_parts = [
+            "",
+            "# KernelCI context for this run",
+            "The KernelCI-side view of this job, fetched from the KernelCI API:",
+            *node_context.summary_lines(),
+        ]
+        if node_json_path is not None:
+            kernelci_parts.append(
+                f"- Full node JSON     : `{node_json_path}`"
+            )
+            kernelci_parts.append(
+                "  Read that file for artifacts, timestamps and parent node ids."
+            )
+        kernelci_parts.append(
+            "Use this to separate an environment or infrastructure problem from a"
+        )
+        kernelci_parts.append(
+            "genuine kernel regression, and name the tree, branch and commit in"
+        )
+        kernelci_parts.append("the report.")
 
     parts = [
         "# Role",
@@ -109,6 +139,7 @@ def build_system_prompt(
         f"- Log size           : {log_size_bytes} bytes",
         f"- Log line count     : {log_line_count}"
         + truncation_note,
+        *kernelci_parts,
         "",
         "# Required first action",
         f"Read `{references_dir}/triage.md` in full via `read_file` before doing",

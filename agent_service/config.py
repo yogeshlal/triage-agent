@@ -56,6 +56,19 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", alias="TRIAGE_HOST")
     port: int = Field(default=8080, alias="TRIAGE_PORT")
 
+    # KernelCI (Maestro) API, reached through kci-dev's KernelCIClient. Node
+    # reads are unauthenticated, so no token is needed here. Used only when a
+    # caller supplies `node_id`.
+    kci_api_url: str = Field(
+        default="https://api.kernelci.org/",
+        alias="TRIAGE_KCI_API_URL",
+    )
+    # Web dashboard base, for human-facing node links in the report. Optional.
+    kci_dashboard_url: Optional[str] = Field(
+        default=None,
+        alias="TRIAGE_KERNELCI_WEB_URL",
+    )
+
     # Outbound TLS to the LLM provider. Corporate MITM proxies typically need
     # `llm_ca_bundle` pointed at the company CA PEM; `llm_ssl_verify=false` is
     # an escape hatch and disables verification globally for LiteLLM.
