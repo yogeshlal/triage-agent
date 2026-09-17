@@ -124,12 +124,16 @@ def execute_run(
     job_id: str,
     model: str,
     model_options: dict | None,
+    node_id: Optional[str] = None,
     log_url: Optional[str] = None,
     settings: Settings,
     store: RunStore,
 ) -> None:
     """Entrypoint for the worker thread. Never raises — every failure is
     captured into the store.
+
+    ``node_id`` is the KernelCI (Maestro) node for this job, when the caller
+    knows it. It is recorded on the run so `GET /triage/{run_id}` can echo it.
 
     If ``log_url`` is provided, try to fetch the log from that URL first; on
     any failure, fall back to the LAVA REST API. The URL path is preferred

@@ -6,8 +6,9 @@
 """FastAPI routes.
 
 - `POST /{job_id}`       — submit a triage run for the LAVA job. Optional
-                            body allows per-request `model` / `model_options`
-                            overrides. Returns `run_id` and status "queued".
+                            body allows a KernelCI `node_id` plus per-request
+                            `model` / `model_options` overrides. Returns
+                            `run_id` and status "queued".
 - `GET  /triage/{run_id}`— poll status; when completed, the report is inlined.
 - `GET  /health`         — liveness + config snapshot.
 
@@ -77,6 +78,7 @@ def get_triage(run_id: str, request: Request) -> TriageStatusResponse:
     return TriageStatusResponse(
         run_id=record.run_id,
         job_id=record.job_id,
+        node_id=record.node_id,
         model=record.model,
         status=record.status,
         started_at=record.started_at,
@@ -123,13 +125,19 @@ def submit_triage(
     run_id = uuid4().hex[:12]
     chosen_model = opts.model or settings.default_model
 
-    record = RunRecord(run_id=run_id, job_id=job_id, model=chosen_model)
+    record = RunRecord(
+        run_id=run_id,
+        job_id=job_id,
+        model=chosen_model,
+        node_id=opts.node_id,
+    )
     store.create(record)
 
     executor.submit(
         execute_run,
         run_id=run_id,
         job_id=job_id,
+        node_id=opts.node_id,
         model=chosen_model,
         model_options=opts.model_options,
         log_url=opts.log_url,
@@ -137,5 +145,8 @@ def submit_triage(
         store=store,
     )
 
-    log.info("queued run %s for lava job %s (model=%s)", run_id, job_id, chosen_model)
+    log.info(
+        "queued run %s for lava job %s (node_id=%s, model=%s)",
+        run_id, job_id, opts.node_id or "-", chosen_model,
+    )
     return TriageQueuedResponse(run_id=run_id, status="queued")

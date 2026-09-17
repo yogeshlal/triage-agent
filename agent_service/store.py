@@ -25,6 +25,7 @@ class RunRecord:
     run_id: str
     job_id: str
     model: str
+    node_id: Optional[str] = None
     status: RunStatus = "queued"
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

@@ -19,21 +19,30 @@ from pydantic import BaseModel, Field
 
 
 class TriageOptions(BaseModel):
-    """Optional body for `POST /{job_id}`. Both fields default to server config."""
+    """Optional body for `POST /{job_id}`. Every field falls back to server config."""
 
     model: Optional[str] = Field(default=None, description="LiteLLM model string override")
     model_options: Optional[dict[str, Any]] = Field(
         default=None,
         description="Extra kwargs merged into litellm.completion (api_base, temperature, max_tokens, ...)",
     )
+    node_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "KernelCI (Maestro) node id for the job being triaged. When set, "
+            "the runner fetches the node and gives the agent the KernelCI-side "
+            "picture — tree/branch/commit, platform and the stored log URL — "
+            "instead of triaging the LAVA log in isolation."
+        ),
+    )
     log_url: Optional[str] = Field(
         default=None,
         description=(
-            "Optional HTTP(S) URL to a plain or gzipped LAVA log. When set, "
-            "the runner downloads from this URL first and falls back to the "
-            "LAVA REST API on any failure. Callers that already have the log "
-            "in KernelCI storage should pass its URL here to avoid a second "
-            "LAVA fetch."
+            "Optional HTTP(S) URL to a plain or gzipped LAVA log, overriding the "
+            "URL found on the KernelCI node. Log resolution is: this field, then "
+            "the node's `artifacts.lava_log`, then the LAVA REST API. Mainly a "
+            "manual/testing escape hatch — callers that pass `node_id` do not "
+            "need it."
         ),
     )
 
@@ -46,6 +55,7 @@ class TriageQueuedResponse(BaseModel):
 class TriageStatusResponse(BaseModel):
     run_id: str
     job_id: str
+    node_id: Optional[str] = None
     model: str
     status: Literal["queued", "running", "completed", "failed"]
     started_at: Optional[datetime] = None
