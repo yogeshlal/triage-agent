@@ -31,6 +31,7 @@ import requests
 
 from .agent import AgentConfig, AgentError, run_agent
 from .config import PROJECT_ROOT, Settings
+from .delivery import ReportContext, deliver_report
 from .kernelci import NodeContext, fetch_node, write_node_json
 from .store import RunStore
 
@@ -145,9 +146,34 @@ def execute_run(
     storage and avoid a second LAVA fetch."""
     store.update(run_id, status="running", started_at=_now())
 
+    # Declared before `fail()` so the delivery closure can read them on the
+    # early-failure paths, where the node lookup has not happened yet.
+    node_ctx: Optional[NodeContext] = None
+    node_json_path: Optional[Path] = None
+
+    def deliver(status: str, error: Optional[str], report: Optional[str]) -> None:
+        """Best-effort report delivery. Never affects the run's outcome."""
+        try:
+            ctx = ReportContext.build(
+                run_id=run_id,
+                job_id=job_id,
+                node_id=node_id,
+                node_context=node_ctx,
+                status=status,
+                error=error,
+                report=report,
+                settings=settings,
+            )
+            outcomes = deliver_report(ctx, settings)
+            if outcomes:
+                log.info("run %s delivery: %s", run_id, outcomes)
+        except Exception:  # noqa: BLE001 — delivery is never fatal
+            log.exception("run %s delivery crashed", run_id)
+
     def fail(message: str) -> None:
         log.warning("run %s failed: %s", run_id, message)
         store.update(run_id, status="failed", finished_at=_now(), error=message)
+        deliver("failed", message, None)
 
     try:
         workspace = _prepare_workspace(settings, run_id)
@@ -158,8 +184,6 @@ def execute_run(
 
     # KernelCI-side context. Best-effort: a lookup failure only costs us the
     # enrichment, never the run.
-    node_ctx: Optional[NodeContext] = None
-    node_json_path: Optional[Path] = None
     if node_id:
         node: Optional[dict[str, Any]] = fetch_node(node_id, settings.kci_api_url)
         if node is not None:
@@ -275,3 +299,10 @@ def execute_run(
         report_path=str(result.report_path),
     )
     log.info("run %s completed in %d iterations", run_id, result.iterations)
+
+    try:
+        report_text = result.report_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        log.warning("run %s could not read report for delivery: %s", run_id, exc)
+        report_text = None
+    deliver("completed", None, report_text)

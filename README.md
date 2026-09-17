@@ -52,23 +52,37 @@ Per-request overrides via the `model` and `model_options` fields on
 
 ### `POST /{job_id}`
 
-Submit a triage run. The LAVA job id is in the URL path. Body is optional
-and only carries model overrides:
+Submit a triage run. The LAVA job id is in the URL path. The body is
+optional:
 
 ```
 POST http://localhost:8080/1234567
 Content-Type: application/json
 
 {
+  "node_id": "6a980789e41d7f97d6f1dcec",
   "model": "anthropic/claude-4-5-sonnet",
   "model_options": {"temperature": 0.1, "max_tokens": 8192}
 }
 ```
 
+`node_id` is the KernelCI (Maestro) node for the job. When supplied, the
+service fetches that node through `kci-dev`'s `KernelCIClient` and gives the
+agent the KernelCI-side picture — tree, branch, commit, platform, lab — so
+the RCA is not based on the LAVA log alone. The full node JSON is written
+into the run workspace as `kernelci_node_{node_id}.json` for the agent to
+read on demand. Node reads are unauthenticated; set `TRIAGE_KCI_API_URL` if
+you are not pointing at production. A lookup failure is non-fatal — triage
+proceeds on the log.
+
 `model` and `model_options` are optional; when omitted the service uses
 `TRIAGE_MODEL_DEFAULT`. `model_options` is merged verbatim into the LiteLLM
 `completion()` call — pass anything LiteLLM accepts (`api_base`,
 `temperature`, `max_tokens`, provider-specific args).
+
+A fourth field, `log_url`, overrides where the log comes from. Log
+resolution is: `log_url`, then the node's `artifacts.lava_log`, then the
+LAVA REST API. Callers that pass `node_id` do not need it.
 
 Reserved names (`health`, `triage`, `docs`, `openapi.json`, `redoc`) are
 rejected as job ids with HTTP 400.
@@ -91,6 +105,7 @@ Response:
 {
   "run_id": "a1b2c3d4e5f6",
   "job_id": "1234567",
+  "node_id": "6a980789e41d7f97d6f1dcec",
   "model": "anthropic/claude-4-5-sonnet",
   "status": "completed",
   "started_at": "...",
@@ -105,6 +120,25 @@ Response:
 `status` progresses `queued` → `running` → `completed | failed`. On `failed`,
 `error` is a short human-readable message (see `agent_service/runner.py` for
 the full mapping). 404 is returned for unknown `run_id`.
+
+## Report delivery
+
+Polling `GET /triage/{run_id}` is always available, but the service can also
+push the finished report out. Both channels are optional and gated
+independently — see `.env.example` for the full list.
+
+- **GitHub issue** — `TRIAGE_GITHUB_REPO` + `TRIAGE_GITHUB_TOKEN`. The first
+  failure for a `node_id` opens an issue; later runs for the same `node_id`
+  comment on it instead. De-duplication works by searching `in:body
+  <node_id>`, which is why the report body always carries the node id.
+- **Email** — `TRIAGE_SMTP_HOST` + `TRIAGE_SMTP_FROM` + `TRIAGE_EMAIL_TO`.
+  STARTTLS on port 587, implicit TLS on 465. Sends a plain-text body with an
+  HTML alternative when `markdown` is installed.
+
+Delivery runs on both terminal outcomes: a `failed` run delivers an
+"Analysis unavailable" note with the error, so a broken triage is visible
+rather than silent. Delivery can never change a run's status.
+
 
 ### `GET /health`
 

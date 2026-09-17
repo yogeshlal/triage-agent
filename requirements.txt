@@ -11,3 +11,6 @@ requests>=2.31
 # huggingface-hub (wants >=8.4.2). Verified harmless: huggingface-hub only
 # needs click for its own CLI, and litellm imports fine on click 8.2.x.
 kci-dev>=0.1.11
+# Optional: renders the HTML alternative part of delivery emails. Delivery
+# degrades to plain text when it is absent.
+markdown>=3.5

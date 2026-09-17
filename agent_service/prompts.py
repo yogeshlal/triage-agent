@@ -19,7 +19,7 @@ from pathlib import Path
 from .kernelci import NodeContext
 
 
-def _lava_job_url(job_id: str) -> str | None:
+def lava_job_url(job_id: str) -> str | None:
     """Compose the full LAVA job page URL from LAVA_URL and job_id.
 
     Returns None when LAVA_URL is unset — the prompt falls back to bare id.
@@ -68,7 +68,7 @@ def build_system_prompt(
         f"\nNOTE: The log was truncated to {log_size_bytes} bytes; the tail is missing."
         if log_truncated else ""
     )
-    lava_url = _lava_job_url(job_id)
+    lava_url = lava_job_url(job_id)
     lava_url_line = (
         f"- LAVA job URL       : {lava_url}"
         if lava_url

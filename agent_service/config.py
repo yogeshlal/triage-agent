@@ -69,6 +69,24 @@ class Settings(BaseSettings):
         alias="TRIAGE_KERNELCI_WEB_URL",
     )
 
+    # Report delivery. All optional and independently gated: GitHub needs
+    # repo+token, email needs host+from+to. Comma-separated lists are kept as
+    # plain strings and split in delivery.py — pydantic-settings would
+    # otherwise demand JSON for a list[str] field.
+    github_repo: Optional[str] = Field(default=None, alias="TRIAGE_GITHUB_REPO")
+    github_token: Optional[str] = Field(default=None, alias="TRIAGE_GITHUB_TOKEN")
+    github_labels: Optional[str] = Field(
+        default=None,
+        alias="TRIAGE_GITHUB_LABELS",
+    )
+    smtp_host: Optional[str] = Field(default=None, alias="TRIAGE_SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="TRIAGE_SMTP_PORT")
+    smtp_user: Optional[str] = Field(default=None, alias="TRIAGE_SMTP_USER")
+    smtp_password: Optional[str] = Field(default=None, alias="TRIAGE_SMTP_PASSWORD")
+    smtp_from: Optional[str] = Field(default=None, alias="TRIAGE_SMTP_FROM")
+    email_to: Optional[str] = Field(default=None, alias="TRIAGE_EMAIL_TO")
+    email_cc: Optional[str] = Field(default=None, alias="TRIAGE_EMAIL_CC")
+
     # Outbound TLS to the LLM provider. Corporate MITM proxies typically need
     # `llm_ca_bundle` pointed at the company CA PEM; `llm_ssl_verify=false` is
     # an escape hatch and disables verification globally for LiteLLM.
